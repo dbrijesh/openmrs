@@ -11,8 +11,11 @@ package org.openmrs.web;
 
 import jakarta.servlet.DispatcherType;
 import java.util.EnumSet;
+import java.util.Properties;
 
+import org.openmrs.api.context.Context;
 import org.openmrs.module.web.filter.ModuleFilter;
+import org.openmrs.util.OpenmrsUtil;
 import org.openmrs.web.filter.CookieClearingFilter;
 import org.openmrs.web.filter.GZIPFilter;
 import org.openmrs.web.filter.JspClassLoaderFilter;
@@ -20,6 +23,9 @@ import org.openmrs.web.filter.OpenmrsFilter;
 import org.openmrs.web.filter.initialization.InitializationFilter;
 import org.openmrs.web.filter.startuperror.StartupErrorFilter;
 import org.openmrs.web.filter.update.UpdateFilter;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
@@ -37,6 +43,30 @@ import org.springframework.web.util.IntrospectorCleanupListener;
  */
 @Configuration
 public class WebConfig {
+
+	/**
+	 * Loads openmrs-runtime.properties into the OpenMRS Context BEFORE HibernateSessionFactoryBean
+	 * initializes. In web.xml deployments, Listener ran before Spring's ContextLoaderListener;
+	 * in Spring Boot all beans initialize before servlet listeners fire, so we use a
+	 * BeanFactoryPostProcessor (runs pre-instantiation) to restore that ordering.
+	 */
+	@Bean
+	public static BeanFactoryPostProcessor openmrsRuntimePropertiesLoader() {
+		return new BeanFactoryPostProcessor() {
+			@Override
+			public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+				try {
+					Properties props = OpenmrsUtil.getRuntimeProperties("openmrs");
+					if (props != null && !props.isEmpty()) {
+						Context.setRuntimeProperties(props);
+					}
+				}
+				catch (Exception e) {
+					// No runtime properties found; InitializationFilter will show the setup wizard
+				}
+			}
+		};
+	}
 
 	// ---- Listeners ----
 

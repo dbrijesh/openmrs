@@ -67,6 +67,13 @@
          <scope>provided</scope>
       </dependency>
 
+      <!-- H2 embedded DB for development/testing without MySQL -->
+      <dependency>
+         <groupId>com.h2database</groupId>
+         <artifactId>h2</artifactId>
+         <scope>runtime</scope>
+      </dependency>
+
       <!-- Spring Boot DevTools for development -->
       <dependency>
          <groupId>org.springframework.boot</groupId>
