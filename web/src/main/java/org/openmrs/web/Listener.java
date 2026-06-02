@@ -370,7 +370,12 @@ public final class Listener extends ContextLoader implements ServletContextListe
 	 * @param servletContext
 	 */
 	private void clearDWRFile(ServletContext servletContext) {
-		File dwrFile = Paths.get(servletContext.getRealPath(""), "WEB-INF", "dwr-modules.xml").toFile();
+		String realPath = servletContext.getRealPath("");
+		if (realPath == null) {
+			// embedded Tomcat (Spring Boot) — no unpacked WAR; skip DWR cleanup
+			return;
+		}
+		File dwrFile = Paths.get(realPath, "WEB-INF", "dwr-modules.xml").toFile();
 		
 		try {
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -419,6 +424,9 @@ public final class Listener extends ContextLoader implements ServletContextListe
 	 */
 	private void copyCustomizationIntoWebapp(ServletContext servletContext, Properties props) {
 		String realPath = servletContext.getRealPath("");
+		if (realPath == null) {
+			return; // embedded Tomcat — no filesystem path to copy into
+		}
 		// TODO centralize map to WebConstants?
 		Map<String, String> custom = new HashMap<>();
 		custom.put("custom.template.dir", "/WEB-INF/template");
@@ -523,7 +531,12 @@ public final class Listener extends ContextLoader implements ServletContextListe
 	 * @param servletContext the current servlet context for the webapp
 	 */
 	public static void loadBundledModules(ServletContext servletContext) {
-		File folder = Paths.get(servletContext.getRealPath(""), "WEB-INF", "bundledModules").toFile();
+		String realPath = servletContext.getRealPath("");
+		if (realPath == null) {
+			log.warn("loadBundledModules: getRealPath returned null (embedded Tomcat); skipping bundled module load");
+			return;
+		}
+		File folder = Paths.get(realPath, "WEB-INF", "bundledModules").toFile();
 		
 		if (!folder.exists()) {
 			log.warn("Bundled module folder doesn't exist: " + folder.getAbsolutePath());
