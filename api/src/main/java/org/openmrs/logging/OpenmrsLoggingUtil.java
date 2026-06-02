@@ -53,13 +53,21 @@ public final class OpenmrsLoggingUtil {
 	 */
 	@Logging(ignore = true)
 	public static MemoryAppender getMemoryAppender() {
-		MemoryAppender memoryAppender = ((LoggerContext) LogManager.getContext(true)).getConfiguration()
+		Appender appender = ((LoggerContext) LogManager.getContext(true)).getConfiguration()
 			.getAppender(OpenmrsConstants.MEMORY_APPENDER_NAME);
-		
-		if (memoryAppender != null && !memoryAppender.isStarted()) {
+
+		// Guard: in Spring Boot, the MEMORY_APPENDER slot may be a NullAppender (placeholder
+		// used when the custom Memory plugin cannot be loaded at early boot before the WAR
+		// classloader is ready). Return null in that case so callers fall back gracefully.
+		if (!(appender instanceof MemoryAppender)) {
+			return null;
+		}
+
+		MemoryAppender memoryAppender = (MemoryAppender) appender;
+		if (!memoryAppender.isStarted()) {
 			memoryAppender.start();
 		}
-		
+
 		return memoryAppender;
 	}
 	
