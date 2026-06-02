@@ -481,7 +481,8 @@ public class OpenmrsUtil {
 	 */
 	@Deprecated
 	public static MemoryAppender getMemoryAppender() {
-		return new MemoryAppender(OpenmrsLoggingUtil.getMemoryAppender());
+		org.openmrs.logging.MemoryAppender impl = OpenmrsLoggingUtil.getMemoryAppender();
+		return impl != null ? new MemoryAppender(impl) : null;
 	}
 	
 	/**
