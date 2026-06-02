@@ -30,7 +30,7 @@ jobs:
             java-version: 11
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
