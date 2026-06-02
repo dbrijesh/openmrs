@@ -34,7 +34,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.orm.hibernate5.support.OpenSessionInViewFilter;
 import org.springframework.web.context.request.RequestContextListener;
 import org.springframework.web.filter.CharacterEncodingFilter;
-import org.springframework.web.filter.DelegatingFilterProxy;
 import org.springframework.web.util.IntrospectorCleanupListener;
 
 /**
@@ -127,16 +126,6 @@ public class WebConfig {
 		reg.addUrlPatterns("/*");
 		reg.setOrder(4);
 		reg.setName("UpdateFilter");
-		return reg;
-	}
-
-	@Bean
-	public FilterRegistrationBean<DelegatingFilterProxy> multipartFilter() {
-		FilterRegistrationBean<DelegatingFilterProxy> reg = new FilterRegistrationBean<>();
-		reg.setFilter(new DelegatingFilterProxy("multipartResolver"));
-		reg.addUrlPatterns("/*");
-		reg.setOrder(5);
-		reg.setName("multipartFilter");
 		return reg;
 	}
 
