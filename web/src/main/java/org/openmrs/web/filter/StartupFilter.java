@@ -122,42 +122,46 @@ public abstract class StartupFilter implements Filter {
 			if (servletPath.startsWith("/images") || servletPath.startsWith("/initfilter/scripts")) {
 				// strip out the /initfilter part
 				servletPath = servletPath.replaceFirst("/initfilter", "/WEB-INF/view");
-				// writes the actual file path to the response
-				Path filePath = Paths.get(filterConfig.getServletContext().getRealPath(servletPath)).normalize();
-				Path fullFilePath = filePath;
-				
-				if (httpRequest.getPathInfo() != null) {
-					fullFilePath = fullFilePath.resolve(httpRequest.getPathInfo());
-					if (!(fullFilePath.normalize().startsWith(filePath))) {
-						log.warn("Detected attempted directory traversal in request for {}", httpRequest.getPathInfo());
-						return;
-					}
-				}
-				
-				String contentType = httpRequest.getServletContext().getMimeType(fullFilePath.toString());
+
+				// Determine content type from the path string (works without a real File object)
+				String contentType = httpRequest.getServletContext().getMimeType(servletPath);
 				if (contentType == null || contentType.isEmpty()) {
 					try {
-						contentType = Files.probeContentType(fullFilePath);
-					} catch (IOException ignored) {}
+						contentType = Files.probeContentType(java.nio.file.Paths.get(servletPath));
+					}
+					catch (IOException ignored) {}
 				}
-
-				MediaType mediaType;
-				if (contentType != null && !contentType.isEmpty()) {
-					mediaType = MediaType.parseMediaType(contentType);
-				} else {
-					mediaType = MediaType.APPLICATION_OCTET_STREAM;
-				}
-				
+				MediaType mediaType = (contentType != null && !contentType.isEmpty())
+				        ? MediaType.parseMediaType(contentType) : MediaType.APPLICATION_OCTET_STREAM;
 				response.setContentType(mediaType.toString());
-				
-				try (InputStream fis = new FileInputStream(fullFilePath.normalize().toFile())) {
-					OpenmrsUtil.copyFile(fis, httpResponse.getOutputStream());
-				}
-				catch (FileNotFoundException e) {
-					log.error("Unable to find file: {}", filePath, e);
-				}
-				catch (IOException e) {
-					log.warn("An error occurred while handling file {}", filePath, e);
+
+				String realPath = filterConfig.getServletContext().getRealPath(servletPath);
+				if (realPath != null) {
+					// Traditional WAR deployment: serve directly from the unpacked filesystem
+					Path filePath = java.nio.file.Paths.get(realPath).normalize();
+					try (InputStream fis = new java.io.FileInputStream(filePath.toFile())) {
+						OpenmrsUtil.copyFile(fis, httpResponse.getOutputStream());
+					}
+					catch (java.io.FileNotFoundException e) {
+						log.error("Unable to find file: {}", filePath, e);
+						httpResponse.sendError(HttpServletResponse.SC_NOT_FOUND);
+					}
+					catch (IOException e) {
+						log.warn("An error occurred while handling file {}", filePath, e);
+					}
+				} else {
+					// Embedded Tomcat (Spring Boot): serve from the WAR classpath
+					try (InputStream stream = filterConfig.getServletContext().getResourceAsStream(servletPath)) {
+						if (stream == null) {
+							log.error("Unable to find classpath resource: {}", servletPath);
+							httpResponse.sendError(HttpServletResponse.SC_NOT_FOUND);
+						} else {
+							OpenmrsUtil.copyFile(stream, httpResponse.getOutputStream());
+						}
+					}
+					catch (IOException e) {
+						log.warn("An error occurred while handling classpath resource {}", servletPath, e);
+					}
 				}
 			} else if (servletPath.startsWith("/scripts")) {
 				log.error(
