@@ -13,11 +13,25 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Properties;
+import java.util.Set;
 
 import org.openmrs.util.DatabaseUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DatabaseDetective {
+
+	private static final Logger log = LoggerFactory.getLogger(DatabaseDetective.class);
+
+	/** Table names that should be ignored when checking if the database is empty. */
+	private static final Set<String> IGNORED_TABLES = new HashSet<>(Arrays.asList(
+	        "liquibasechangelog",
+	        "liquibasechangeloglock",
+	        "dual"          // H2 MySQL-compatibility pseudo-table
+	));
 	
 	private static final String CONNECTION_URL = "connection.url";
 	
@@ -49,20 +63,28 @@ public class DatabaseDetective {
 			        .getProperty(CONNECTION_USERNAME), props.getProperty(CONNECTION_PASSWORD));
 			
 			DatabaseMetaData dbMetaData = connection.getMetaData();
-			
+
 			String[] types = { "TABLE" };
-			
-			//get all tables
-			ResultSet tbls = dbMetaData.getTables(null, null, null, types);
+
+			// Restrict to the PUBLIC (user) schema to avoid H2's INFORMATION_SCHEMA tables
+			// (H2 2.x exposes INFORMATION_SCHEMA.CONSTANTS etc. as type "BASE TABLE").
+			// For MySQL/MariaDB/PostgreSQL null schema returns only user tables anyway.
+			String catalog = connection.getCatalog();
+			String userSchema = connection.getSchema();   // "PUBLIC" on H2, db-name on MySQL
+			ResultSet tbls = dbMetaData.getTables(catalog, userSchema, null, types);
 			
 			while (tbls.next()) {
 				String tableName = tbls.getString("TABLE_NAME");
-				//if any table exist besides "liquibasechangelog" or "liquibasechangeloglock", return false
-				if (!("liquibasechangelog".equals(tableName.toLowerCase()))
-				        && !("liquibasechangeloglock".equals(tableName.toLowerCase()))) {
+				String schema    = tbls.getString("TABLE_SCHEM");
+				String lower     = tableName.toLowerCase();
+				if (!IGNORED_TABLES.contains(lower)) {
+					log.warn("isDatabaseEmpty: found non-liquibase table '{}.{}' (type={}) → DB is not empty",
+					        schema, tableName, tbls.getString("TABLE_TYPE"));
 					return false;
 				}
+				log.info("isDatabaseEmpty: ignoring known table '{}.{}'", schema, tableName);
 			}
+			log.info("isDatabaseEmpty: no user tables found → DB is empty");
 			return true;
 		}
 		catch (Exception e) {
