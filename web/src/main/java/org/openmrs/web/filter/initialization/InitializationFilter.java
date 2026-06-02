@@ -490,7 +490,9 @@ public class InitializationFilter extends StartupFilter {
 			wizardModel.addDemoData = "yes".equals(httpRequest.getParameter("add_demo_data"));
 			
 			wizardModel.hasCurrentDatabaseUser = false;
-			wizardModel.createDatabaseUser = true;
+			// H2 does not support MySQL-style CREATE USER — skip user creation
+			String dbUrl = wizardModel.databaseConnection != null ? wizardModel.databaseConnection : "";
+			wizardModel.createDatabaseUser = !dbUrl.startsWith("jdbc:h2:");
 			// default wizardModel.createUserUsername is root
 			wizardModel.createUserPassword = wizardModel.databaseRootPassword;
 			
