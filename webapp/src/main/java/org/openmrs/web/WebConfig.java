@@ -10,6 +10,7 @@
 package org.openmrs.web;
 
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.ServletContext;
 import java.util.EnumSet;
 import java.util.Properties;
 
@@ -23,12 +24,15 @@ import org.openmrs.web.filter.OpenmrsFilter;
 import org.openmrs.web.filter.initialization.InitializationFilter;
 import org.openmrs.web.filter.startuperror.StartupErrorFilter;
 import org.openmrs.web.filter.update.UpdateFilter;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.orm.hibernate5.support.OpenSessionInViewFilter;
@@ -62,6 +66,34 @@ public class WebConfig {
 				}
 				catch (Exception e) {
 					// No runtime properties found; InitializationFilter will show the setup wizard
+				}
+			}
+		};
+	}
+
+	/**
+	 * Spring Boot fires ApplicationReadyEvent AFTER finishBeanFactoryInitialization() completes,
+	 * meaning all beans (including the OpenMRS 'context' bean with contextDAO wired in) are ready.
+	 * This is the correct point to call WebDaemon.startOpenmrs() in a Spring Boot deployment,
+	 * because Listener.contextInitialized() fires too early (inside Tomcat.start() / onRefresh(),
+	 * before beans are initialized).
+	 */
+	@Bean
+	public ApplicationListener<ApplicationReadyEvent> openmrsStartupListener() {
+		return event -> {
+			org.springframework.web.context.WebApplicationContext wac =
+			        (org.springframework.web.context.WebApplicationContext) event.getApplicationContext();
+			ServletContext servletContext = wac.getServletContext();
+			// Only call startOpenmrs if: setup wizard not needed, not already started, and no prior error
+			if (!Listener.isSetupNeeded() && !Listener.isOpenmrsStarted() && !Listener.errorOccurredAtStartup()) {
+				try {
+					LoggerFactory.getLogger(WebConfig.class).info(
+					        "ApplicationReadyEvent: all beans ready, calling Listener.startOpenmrs");
+					Listener.startOpenmrs(servletContext);
+				}
+				catch (Exception e) {
+					Listener.setErrorAtStartup(e);
+					LoggerFactory.getLogger(WebConfig.class).error("OpenMRS startup failed", e);
 				}
 			}
 		};

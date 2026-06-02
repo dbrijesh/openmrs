@@ -37,6 +37,7 @@ import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.ContextLoader;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 import org.springframework.web.context.support.XmlWebApplicationContext;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -132,6 +133,10 @@ public final class Listener extends ContextLoader implements ServletContextListe
 	
 	public static void setErrorAtStartup(Throwable errorAtStartup) {
 		Listener.errorAtStartup = errorAtStartup;
+	}
+
+	public static boolean isOpenmrsStarted() {
+		return openmrsStarted;
 	}
 
 	/**
@@ -233,14 +238,27 @@ public final class Listener extends ContextLoader implements ServletContextListe
 				copyCustomizationIntoWebapp(servletContext, props);
 				
 				/**
-				 * This logic is from ContextLoader.initWebApplicationContext. Copied here instead
-				 * of calling that so that the context is not cached and hence not garbage collected
+				 * In Spring Boot the root WebApplicationContext is already set by the Spring Boot
+				 * launcher before servlet listeners fire. Reuse it instead of creating a second
+				 * XmlWebApplicationContext (which would fail because there is no unpacked
+				 * /WEB-INF/applicationContext.xml in embedded Tomcat).
+				 * In a traditional WAR deployment the attribute is null, so we create it as before.
 				 */
-				XmlWebApplicationContext context = (XmlWebApplicationContext) createWebApplicationContext(servletContext);
-				configureAndRefreshWebApplicationContext(context, servletContext);
-				servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, context);
-				
-				WebDaemon.startOpenmrs(event.getServletContext());
+				WebApplicationContext existing =
+				        WebApplicationContextUtils.getWebApplicationContext(servletContext);
+				if (existing == null) {
+					// Traditional WAR deployment: create and set the XmlWebApplicationContext now.
+					XmlWebApplicationContext context = (XmlWebApplicationContext) createWebApplicationContext(servletContext);
+					configureAndRefreshWebApplicationContext(context, servletContext);
+					servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, context);
+					// In traditional deployment beans are ready immediately after context refresh.
+					WebDaemon.startOpenmrs(event.getServletContext());
+				}
+				// In Spring Boot, Listener.contextInitialized fires during Tomcat.start() inside
+				// context.onRefresh(), which is BEFORE finishBeanFactoryInitialization() completes.
+				// The 'context' bean (and thus contextDAO) is not created yet.
+				// WebConfig.onApplicationReady() fires after finishBeanFactoryInitialization() and
+				// calls WebDaemon.startOpenmrs() once all beans are ready.
 			} else {
 				setupNeeded = true;
 			}
