@@ -879,7 +879,7 @@ public class InitializationFilter extends StartupFilter {
 		wizardModel.addDemoData = "yes".equals(addDemoData);
 		
 		wizardModel.hasCurrentDatabaseUser = false;
-		wizardModel.createDatabaseUser = true;
+		wizardModel.createDatabaseUser = !wizardModel.databaseConnection.contains("jdbc:h2");
 		// default wizardModel.createUserUsername is root
 		wizardModel.createUserPassword = wizardModel.databaseRootPassword;
 		
@@ -1423,7 +1423,7 @@ public class InitializationFilter extends StartupFilter {
 							addExecutedTask(WizardTask.CREATE_SCHEMA);
 						}
 						
-						if (wizardModel.createDatabaseUser) {
+						if (wizardModel.createDatabaseUser && !isCurrentDatabase(DATABASE_H2)) {
 							setMessage("Create database user");
 							setExecutingTask(WizardTask.CREATE_DB_USER);
 							connectionUsername = wizardModel.databaseName + "_user";
@@ -1731,10 +1731,23 @@ public class InitializationFilter extends StartupFilter {
 						setMessage("Starting OpenMRS");
 						
 						// start spring
-						// after this point, all errors need to also call: contextLoader.closeWebApplicationContext(event.getServletContext())
-						// logic copied from org.springframework.web.context.ContextLoaderListener
+						// In a traditional WAR deployment, ContextLoader initialises the root Spring context here.
+						// In the Spring Boot path the root context already exists — attempting to create a second one
+						// throws IllegalStateException. Instead, call Listener.startOpenmrs() which is idempotent.
 						ContextLoader contextLoader = new ContextLoader();
-						contextLoader.initWebApplicationContext(filterConfig.getServletContext());
+						boolean springBootContext = filterConfig.getServletContext()
+						        .getAttribute(org.springframework.web.context.WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE) != null;
+						if (springBootContext) {
+							if (!Listener.isOpenmrsStarted()) {
+								try {
+									Listener.startOpenmrs(filterConfig.getServletContext());
+								} catch (jakarta.servlet.ServletException se) {
+									throw new RuntimeException("startOpenmrs failed in Spring Boot path", se);
+								}
+							}
+						} else {
+							contextLoader.initWebApplicationContext(filterConfig.getServletContext());
+						}
 						
 						// output properties to the openmrs runtime properties file so that this wizard is not run again
 						FileOutputStream fos = null;

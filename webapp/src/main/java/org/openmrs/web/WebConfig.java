@@ -15,6 +15,9 @@ import java.util.EnumSet;
 import java.util.Properties;
 
 import org.openmrs.api.context.Context;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.openmrs.module.web.filter.ModuleFilter;
 import org.openmrs.util.OpenmrsUtil;
 import org.openmrs.web.filter.CookieClearingFilter;
@@ -95,6 +98,26 @@ public class WebConfig {
 					Listener.setErrorAtStartup(e);
 					LoggerFactory.getLogger(WebConfig.class).error("OpenMRS startup failed", e);
 				}
+			}
+		};
+	}
+
+	// ---- Root URL + static resources from WAR web root ----
+
+	@Bean
+	public WebMvcConfigurer rootUrlConfigurer() {
+		return new WebMvcConfigurer() {
+			@Override
+			public void addViewControllers(ViewControllerRegistry registry) {
+				// Redirect root to index.htm ("platform running, no UI module" page)
+				registry.addRedirectViewController("/", "/index.htm");
+			}
+
+			@Override
+			public void addResourceHandlers(ResourceHandlerRegistry registry) {
+				// Serve static pages and images from the WAR web root (src/main/webapp)
+				registry.addResourceHandler("/index.htm", "/test.html").addResourceLocations("/");
+				registry.addResourceHandler("/images/**").addResourceLocations("/images/");
 			}
 		};
 	}

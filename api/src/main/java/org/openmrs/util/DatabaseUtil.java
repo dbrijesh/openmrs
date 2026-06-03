@@ -63,6 +63,9 @@ public class DatabaseUtil {
 			} else if (connectionUrl.contains("jdbc:mariadb")) {
 				Class.forName("org.mariadb.jdbc.Driver");
 				connectionDriver = "org.mariadb.jdbc.Driver";
+			} else if (connectionUrl.contains("jdbc:h2")) {
+				Class.forName("org.h2.Driver");
+				connectionDriver = "org.h2.Driver";
 			} else if (connectionUrl.contains("jdbc:hsqldb")) {
 				Class.forName("org.hsqldb.jdbcDriver");
 				connectionDriver = "org.hsqldb.jdbcDriver";

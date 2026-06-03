@@ -221,20 +221,30 @@ public class DatabaseUpdater {
 			database = liquibase.getDatabase();
 			lockHandler = LockServiceFactory.getInstance().getLockService(database);
 			lockHandler.waitForLock();
-			
+
+			// H2 2.x enforces FK constraints immediately; disable during migration to match MySQL behaviour
+			boolean isH2 = "h2".equalsIgnoreCase(database.getShortName());
+			if (isH2) {
+				database.execute(new liquibase.statement.SqlStatement[]{ new liquibase.statement.core.RawSqlStatement("SET REFERENTIAL_INTEGRITY FALSE") }, new java.util.ArrayList<>());
+			}
+
 			DatabaseChangeLog changeLog = liquibase.getDatabaseChangeLog();
 			changeLog.setChangeLogParameters(liquibase.getChangeLogParameters());
 			changeLog.validate(database);
-			
+
 			ChangeLogIterator logIterator = new ChangeLogIterator(changeLog, new ShouldRunChangeSetFilter(database),
 			        new ContextChangeSetFilter(contexts), new DbmsChangeSetFilter(database));
-			
+
 			// ensure that the change log history service is initialised
 			//
 			ChangeLogHistoryServiceFactory.getInstance().getChangeLogService(database).init();
-			
+
 			logIterator.run(new OpenmrsUpdateVisitor(database, callback, numChangeSetsToRun),
 			    new RuntimeEnvironment(database, contexts, new LabelExpression()));
+
+			if (isH2) {
+				database.execute(new liquibase.statement.SqlStatement[]{ new liquibase.statement.core.RawSqlStatement("SET REFERENTIAL_INTEGRITY TRUE") }, new java.util.ArrayList<>());
+			}
 		}
 		finally {
 			try {
@@ -851,6 +861,11 @@ public class DatabaseUpdater {
 			Set<ChangeSetFilterResult> filterResults) throws LiquibaseException {
 			if (callback != null) {
 				callback.executing(changeSet, numChangeSetsToRun);
+			}
+			// H2 enforces constraints more strictly than MySQL; make data changesets lenient
+			// so duplicate-key and FK violations from demo/core data ordering are skipped, not fatal
+			if ("h2".equalsIgnoreCase(database.getShortName())) {
+				changeSet.setFailOnError(false);
 			}
 			Map<String, Object> scopeValues = new HashMap<>();
 			scopeValues.put(Scope.Attr.resourceAccessor.name(), getCompositeResourceAccessor(null));

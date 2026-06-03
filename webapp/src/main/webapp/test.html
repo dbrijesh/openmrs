@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>OpenMRS Platform — Test Dashboard</title>
+<style>
+* { font-family: Verdana, 'Lucida Grande', 'Trebuchet MS', Arial, Sans-Serif; margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #ecf3f7; }
+
+/* ── OpenMRS setup-wizard header ── */
+.logo {
+  background-image: url(images/openmrs_logo_white.gif);
+  background-repeat: no-repeat;
+  height: 98px;
+  left: 3px;
+}
+.bar {
+  background-image: url(images/openmrs_barx.gif);
+  background-repeat: repeat-x;
+  height: 45px;
+  width: 100%;
+  margin-left: 15px;
+  display: flex;
+  align-items: center;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+}
+.bar-round {
+  background-image: url(images/openmrs_bar.gif);
+  background-repeat: no-repeat;
+  height: 45px;
+  width: 100%;
+  font-size: 24px;
+}
+.question { background: #E9E4CC; border-radius: 5px; padding: 8px 12px; margin: 4px 0; }
+.yes      { background: #7fbaf5; border-radius: 5px; padding: 8px 12px; margin: 4px 0; }
+.no       { background: #CCC;    border-radius: 5px; padding: 8px 12px; margin: 4px 0; }
+.openmrs_msg   { background: lightyellow; border: 1px dashed #aaa; padding: 6px 12px; margin: 6px 0; border-radius: 3px; }
+.openmrs_error { background: lightpink;   border: 1px dashed #aaa; padding: 6px 12px; margin: 6px 0; border-radius: 3px; }
+.button { height: 30px; font-size: 16px; border-radius: 15px; background: #E9E4CC; border: 1px solid #bbb; padding: 0 18px; cursor: pointer; }
+
+/* ── Navigation tabs ── */
+.nav { background: #009384; padding: 0 20px; display: flex; gap: 2px; }
+.nav button {
+  background: transparent; border: none; color: white; padding: 10px 18px;
+  cursor: pointer; font-size: 14px; border-bottom: 3px solid transparent;
+}
+.nav button:hover { background: rgba(255,255,255,0.15); }
+.nav button.active { border-bottom: 3px solid white; font-weight: bold; }
+
+/* ── Content area ── */
+.page { display: none; max-width: 960px; margin: 20px auto; padding: 0 16px 40px; }
+.page.active { display: block; }
+
+/* ── Cards ── */
+.card { background: white; border-radius: 6px; border: 1px solid #d0d0d0; padding: 16px; margin-bottom: 16px; }
+.card h3 { color: #009384; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 12px; font-size: 16px; }
+.card h4 { margin: 14px 0 6px; color: #444; }
+
+/* ── Tables ── */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #009384; color: white; padding: 8px 10px; text-align: left; }
+td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #f0faf9; }
+
+/* ── Status pills ── */
+.pill-up   { display: inline-block; background: #2a9; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+.pill-down { display: inline-block; background: #c44; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+.pill-wait { display: inline-block; background: #888; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+
+/* ── Form elements ── */
+label { display: block; font-size: 12px; color: #555; margin: 8px 0 3px; font-weight: bold; }
+input[type=text], select, textarea {
+  width: 100%; padding: 7px 9px; border: 1px solid #ccc; border-radius: 4px;
+  font-size: 13px; font-family: inherit;
+}
+textarea { resize: vertical; font-family: monospace; }
+.btn { background: #009384; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.btn:hover { background: #007a6d; }
+.btn-grey { background: #888; }
+.btn-grey:hover { background: #666; }
+.btn-sm { padding: 4px 12px; font-size: 12px; margin: 2px; }
+.btn-teal { background: #5aaa99; }
+.btn-teal:hover { background: #448877; }
+
+/* ── Response viewer ── */
+pre.response {
+  background: #1e1e2e; color: #cdd6f4; padding: 14px; border-radius: 4px;
+  font-size: 12px; overflow: auto; max-height: 420px; font-family: monospace;
+  white-space: pre-wrap; word-break: break-all;
+}
+.resp-status { font-weight: bold; margin: 8px 0 4px; font-size: 13px; }
+.resp-ok   { color: green; }
+.resp-err  { color: red; }
+
+/* ── Quick-link chips ── */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+/* ── Metric grid ── */
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 12px; }
+.metric-box { background: #f7fffe; border: 1px solid #cee; border-radius: 6px; padding: 12px; text-align: center; }
+.metric-box .mval { font-size: 22px; font-weight: bold; color: #009384; }
+.metric-box .mlbl { font-size: 11px; color: #777; margin-top: 4px; }
+
+code { background: #eee; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ── OpenMRS header (matches setup wizard) ── -->
+<img style="margin-left:75px; padding-top:10px; display:block;" src="images/openmrs_logo_text.gif" alt="OpenMRS" onerror="this.style.display='none'"/>
+<table style="text-align:center; line-height:40px; margin-top:-25px;" width="100%">
+  <tr>
+    <td width="100px"><div class="logo"></div></td>
+    <td>
+      <div class="bar-round">
+        <div class="bar">&nbsp;OpenMRS Platform 2.5.15 — Test Dashboard</div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<!-- ── Tab navigation ── -->
+<div class="nav">
+  <button class="active" onclick="tab(this,'pg-status')">System Status</button>
+  <button onclick="tab(this,'pg-biz')">Business Services</button>
+  <button onclick="tab(this,'pg-api')">API Tester</button>
+  <button onclick="tab(this,'pg-metrics')">JVM Metrics</button>
+  <button onclick="tab(this,'pg-guide')">Test Guide</button>
+</div>
+
+<!-- ═══════════ PAGE 1 — System Status ═══════════ -->
+<div id="pg-status" class="page active">
+
+  <div class="card">
+    <h3>Platform Health <span id="last-refresh" style="font-size:11px;color:#999;font-weight:normal;"></span></h3>
+    <table>
+      <thead><tr><th>Component</th><th>Status</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>Spring Boot Application</td><td id="h-spring"><span class="pill-wait">Checking…</span></td><td id="h-spring-d">—</td></tr>
+        <tr><td>Java Runtime</td>          <td><span class="pill-up">Java 25</span></td><td>jdk-25.0.3 (D:\Java\jdk-25.0.3)</td></tr>
+        <tr><td>Database</td>              <td id="h-db"><span class="pill-wait">Checking…</span></td><td id="h-db-d">H2 2.3.232 file-based</td></tr>
+        <tr><td>Hibernate ORM</td>         <td><span class="pill-up">OK</span></td><td>6.6.4.Final — Hibernate 6 DAO migration complete</td></tr>
+        <tr><td>Platform URL</td>          <td><span class="pill-up">Live</span></td><td><a href="http://localhost:8080/openmrs/" target="_blank">http://localhost:8080/openmrs/</a></td></tr>
+        <tr><td>Actuator</td>              <td><span class="pill-up">Live</span></td><td><a href="http://localhost:8081/actuator/health" target="_blank">http://localhost:8081/actuator/health</a></td></tr>
+      </tbody>
+    </table>
+    <br/>
+    <button class="btn" onclick="refreshHealth()">↻ Refresh</button>
+  </div>
+
+  <div class="card">
+    <h3>Migration Summary</h3>
+    <table>
+      <thead><tr><th>Component</th><th>Before</th><th>After (this branch)</th></tr></thead>
+      <tbody>
+        <tr><td>Java</td>        <td>Java 8 / 11</td>        <td><strong>Java 25.0.3</strong></td></tr>
+        <tr><td>Namespace</td>   <td>javax.*</td>             <td><strong>jakarta.*</strong> (Jakarta EE 10)</td></tr>
+        <tr><td>Spring</td>      <td>Spring 5.2.x</td>        <td><strong>Spring 6.2.6</strong></td></tr>
+        <tr><td>Spring Boot</td> <td>N/A (standalone WAR)</td><td><strong>3.4.5</strong> (embedded Tomcat)</td></tr>
+        <tr><td>Hibernate</td>   <td>5.x (Criteria API)</td>  <td><strong>6.6.4</strong> (HQL — all 27+ DAOs migrated)</td></tr>
+        <tr><td>Liquibase</td>   <td>4.4.3</td>               <td><strong>4.26.0</strong> (H2 2.x support)</td></tr>
+        <tr><td>EHCache</td>     <td>2.x</td>                 <td><strong>3.x + JCache</strong></td></tr>
+        <tr><td>Groovy</td>      <td>2.x</td>                 <td><strong>4.x</strong></td></tr>
+        <tr><td>Database</td>    <td>MySQL 5.7</td>            <td>H2 2.3.232 file-based (dev)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Quick Endpoint Checks</h3>
+    <div class="chips">
+      <button class="btn btn-sm btn-teal" onclick="quickCheck('http://localhost:8081/actuator/health','chk-health')">Health</button>
+      <button class="btn btn-sm btn-teal" onclick="quickCheck('http://localhost:8081/actuator/metrics','chk-metrics')">Metrics list</button>
+      <button class="btn btn-sm btn-teal" onclick="quickCheck('http://localhost:8081/actuator/metrics/jvm.memory.used','chk-mem')">JVM Memory</button>
+      <button class="btn btn-sm btn-teal" onclick="quickCheck('http://localhost:8080/openmrs/','chk-root')">Root (200?)</button>
+    </div>
+    <br/>
+    <div id="chk-health"  class="openmrs_msg" style="display:none"></div>
+    <div id="chk-metrics" class="openmrs_msg" style="display:none"></div>
+    <div id="chk-mem"     class="openmrs_msg" style="display:none"></div>
+    <div id="chk-root"    class="openmrs_msg" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 2 — Business Services ═══════════ -->
+<div id="pg-biz" class="page">
+
+  <div class="card">
+    <h3>OpenMRS Service Layer — Live Tests</h3>
+    <p style="margin-bottom:10px; color:#555; font-size:13px;">
+      These call real OpenMRS business services (PatientService, ConceptService, etc.) via Spring beans.
+      Authentication uses <strong>admin / Admin123</strong> internally.
+    </p>
+    <div class="openmrs_msg" style="margin-bottom:10px;">
+      <strong>Initial admin password is <code>test</code></strong> (set by core data).
+      Click "Set Admin Password → Admin123" first, then all other tests will work.
+    </div>
+    <div class="chips">
+      <button class="btn btn-sm" style="background:#c47;" onclick="resetPass()">① Set Admin Password → Admin123</button>
+      <button class="btn btn-sm" onclick="svc('/openmrs/test-api/services')">All Services Health</button>
+      <button class="btn btn-sm btn-teal" onclick="svc('/openmrs/test-api/patients')">Patients</button>
+      <button class="btn btn-sm btn-teal" onclick="svc('/openmrs/test-api/concepts?limit=20')">Concepts</button>
+      <button class="btn btn-sm btn-teal" onclick="svc('/openmrs/test-api/users')">Users</button>
+      <button class="btn btn-sm btn-teal" onclick="svc('/openmrs/test-api/locations')">Locations</button>
+      <button class="btn btn-sm btn-teal" onclick="svc('/openmrs/test-api/encounter-types')">Encounter Types</button>
+      <button class="btn btn-sm btn-teal" onclick="svc('/openmrs/test-api/programs')">Programs</button>
+      <button class="btn btn-sm btn-teal" onclick="svc('/openmrs/test-api/global-properties?prefix=concept')">Global Props (concept.*)</button>
+      <button class="btn btn-sm btn-teal" onclick="svc('/openmrs/test-api/global-properties')">All Global Props</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Patient Write Test (Create + Delete)</h3>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+      <div style="flex:1; min-width:140px;"><label>Given Name</label><input type="text" id="pt-first" value="TestFirst"/></div>
+      <div style="flex:1; min-width:140px;"><label>Family Name</label><input type="text" id="pt-last" value="TestLast"/></div>
+      <div style="flex:0 0 80px;"><label>Gender</label>
+        <select id="pt-gender"><option value="M">Male</option><option value="F">Female</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="createPatient()">Create Patient (POST)</button>
+    <span style="font-size:12px; color:#888; margin-left:10px;">Saves to DB then shows UUID — use Delete button to clean up</span>
+    <br/><br/>
+    <div style="display:flex; gap:10px; align-items:flex-end;">
+      <div style="flex:1;"><label>Patient UUID to Delete</label><input type="text" id="pt-del-uuid" placeholder="paste uuid from create response"/></div>
+      <div><button class="btn" style="background:#c44;" onclick="deletePatient()">Delete Patient (DELETE)</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Concept Search</h3>
+    <div style="display:flex; gap:10px; align-items:flex-end;">
+      <div style="flex:1;"><label>Search term</label><input type="text" id="concept-q" placeholder="e.g. weight, blood, HIV"/></div>
+      <div><button class="btn" onclick="searchConcepts()">Search Concepts</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Response <span id="biz-status" style="font-size:13px;"></span></h3>
+    <pre class="response" id="biz-resp">Click any button above to call a real OpenMRS service.</pre>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 3 — API Tester ═══════════ -->
+<div id="pg-api" class="page">
+  <div class="card">
+    <h3>API Tester</h3>
+    <div style="display:flex; gap:10px; align-items:flex-end;">
+      <div style="flex:0 0 90px;">
+        <label>Method</label>
+        <select id="t-method">
+          <option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label>URL</label>
+        <input type="text" id="t-url" value="http://localhost:8081/actuator/health"/>
+      </div>
+    </div>
+    <label>Basic Auth &nbsp;<span style="font-weight:normal;color:#888">(username:password — e.g. admin:Admin123)</span></label>
+    <input type="text" id="t-auth" placeholder="leave blank for unauthenticated"/>
+    <label>Request Body &nbsp;<span style="font-weight:normal;color:#888">(JSON for POST/PUT)</span></label>
+    <textarea id="t-body" rows="4" placeholder='{"key": "value"}'></textarea>
+    <br/>
+    <button class="btn" onclick="sendReq()">▶ Send</button>
+    <button class="btn btn-grey" onclick="clearResp()" style="margin-left:8px;">✕ Clear</button>
+
+    <br/><br/>
+    <strong style="font-size:12px;">Quick tests — Actuator (port 8081):</strong>
+    <div class="chips">
+      <button class="btn btn-sm btn-teal" onclick="load('http://localhost:8081/actuator/health')">Health</button>
+      <button class="btn btn-sm btn-teal" onclick="load('http://localhost:8081/actuator/info')">Info</button>
+      <button class="btn btn-sm btn-teal" onclick="load('http://localhost:8081/actuator/metrics')">Metrics index</button>
+      <button class="btn btn-sm btn-teal" onclick="load('http://localhost:8081/actuator/metrics/jvm.memory.used')">JVM memory</button>
+      <button class="btn btn-sm btn-teal" onclick="load('http://localhost:8081/actuator/metrics/jvm.threads.live')">Threads</button>
+      <button class="btn btn-sm btn-teal" onclick="load('http://localhost:8081/actuator/metrics/process.uptime')">Uptime</button>
+    </div>
+    <br/>
+    <strong style="font-size:12px;">Quick tests — App (port 8080) — requires webservices.rest module for /ws/* :</strong>
+    <div class="chips">
+      <button class="btn btn-sm" style="background:#7a9" onclick="load('http://localhost:8080/openmrs/')">Home page</button>
+      <button class="btn btn-sm" style="background:#7a9" onclick="load('http://localhost:8080/openmrs/ws/rest/v1/')">REST root</button>
+      <button class="btn btn-sm" style="background:#7a9" onclick="loadAuth('http://localhost:8080/openmrs/ws/rest/v1/patient?limit=5')">Patients</button>
+      <button class="btn btn-sm" style="background:#7a9" onclick="loadAuth('http://localhost:8080/openmrs/ws/rest/v1/concept?limit=5')">Concepts</button>
+      <button class="btn btn-sm" style="background:#7a9" onclick="loadAuth('http://localhost:8080/openmrs/ws/rest/v1/user?limit=5')">Users</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Response <span id="resp-status" class="resp-status"></span></h3>
+    <pre class="response" id="resp-body">Click ▶ Send or a quick-test button to call an endpoint.</pre>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 3 — JVM Metrics ═══════════ -->
+<div id="pg-metrics" class="page">
+  <div class="card">
+    <h3>Live JVM &amp; Hibernate Metrics</h3>
+    <button class="btn" onclick="loadAllMetrics()">↻ Load / Refresh</button>
+    <br/><br/>
+    <div id="metric-grid" class="metric-grid">
+      <div class="openmrs_msg">Click "Load / Refresh" to fetch live data from the Spring Boot Actuator (port 8081).</div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>All Available Metric Names</h3>
+    <div id="all-metrics-list" style="font-size:12px; color:#555;">Not loaded yet.</div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 4 — Test Guide ═══════════ -->
+<div id="pg-guide" class="page">
+
+  <div class="card">
+    <h3>Step 1 — Confirm Platform is Running</h3>
+    <table>
+      <tr>
+        <td class="question">Open in browser</td>
+        <td class="yes"><a href="http://localhost:8080/openmrs/" target="_blank">http://localhost:8080/openmrs/</a></td>
+      </tr>
+      <tr>
+        <td class="question">Expected</td>
+        <td class="yes">"OpenMRS Platform 2.5.15 Running!" — database initialized, no UI module installed</td>
+      </tr>
+      <tr>
+        <td class="question">Actuator health</td>
+        <td class="yes"><a href="http://localhost:8081/actuator/health" target="_blank">http://localhost:8081/actuator/health</a> → <code>{"status":"UP"}</code></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Step 2 — Install webservices.rest Module (for REST API)</h3>
+    <p style="margin-bottom:10px;">OpenMRS Core has no REST API built-in — it's provided by a module.</p>
+    <ol style="padding-left:20px; line-height:2;">
+      <li>Download: <a href="https://github.com/openmrs/openmrs-module-webservices.rest/releases" target="_blank">webservices.rest-omod-2.42.0.omod</a></li>
+      <li>Copy to: <code>%APPDATA%\OpenMRS\modules\</code> (currently empty)</li>
+      <li>Restart: <code>java -jar webapp\target\openmrs.war</code></li>
+      <li>Test: <a href="http://localhost:8080/openmrs/ws/rest/v1/" target="_blank">http://localhost:8080/openmrs/ws/rest/v1/</a></li>
+    </ol>
+    <p class="openmrs_msg">After install, use <strong>admin / Admin123</strong> as Basic Auth credentials for all REST calls.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 3 — REST API Endpoints (after module installed)</h3>
+    <table>
+      <thead><tr><th>Method</th><th>URL</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td><code>/ws/rest/v1/patient?limit=5</code></td><td>List patients (demo data)</td></tr>
+        <tr><td>GET</td><td><code>/ws/rest/v1/concept?limit=10</code></td><td>Concept dictionary</td></tr>
+        <tr><td>GET</td><td><code>/ws/rest/v1/user</code></td><td>System users</td></tr>
+        <tr><td>GET</td><td><code>/ws/rest/v1/location</code></td><td>Locations</td></tr>
+        <tr><td>GET</td><td><code>/ws/rest/v1/encounter?limit=5</code></td><td>Patient encounters</td></tr>
+        <tr><td>GET</td><td><code>/ws/rest/v1/obs?limit=5</code></td><td>Observations</td></tr>
+        <tr><td>POST</td><td><code>/ws/rest/v1/patient</code></td><td>Create new patient</td></tr>
+      </tbody>
+    </table>
+    <p class="openmrs_msg" style="margin-top:10px;">All these are testable from the <strong>API Tester</strong> tab with Basic Auth set to <code>admin:Admin123</code>.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 4 — Run Unit Tests</h3>
+    <div class="question">Validate the migrated API/DAO layer with the existing test suite:</div>
+    <br/>
+    <pre style="background:#1e1e2e;color:#cdd6f4;padding:12px;border-radius:4px;font-size:12px;">cd E:\JavaUpgradeDemo\openmrs-core-2.5.15
+set JAVA_HOME=D:\Java\jdk-25.0.3
+mvn test -pl api --no-transfer-progress 2>&amp;1 | findstr /I "tests run error"</pre>
+  </div>
+
+  <div class="card">
+    <h3>Step 5 — Install Legacy UI (for login page)</h3>
+    <p style="margin-bottom:10px;">To get a traditional OpenMRS login/admin UI:</p>
+    <ol style="padding-left:20px; line-height:2;">
+      <li>Download <a href="https://github.com/openmrs/openmrs-module-legacyui/releases" target="_blank">legacyui module</a></li>
+      <li>Copy <code>.omod</code> to <code>%APPDATA%\OpenMRS\modules\</code></li>
+      <li>Restart the app</li>
+      <li>Navigate to <a href="http://localhost:8080/openmrs/login.htm" target="_blank">http://localhost:8080/openmrs/login.htm</a></li>
+    </ol>
+  </div>
+</div>
+
+<script>
+/* ── Tab switching ── */
+function tab(btn, id) {
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+/* ── Health check ── */
+async function refreshHealth() {
+  document.getElementById('h-spring').innerHTML = '<span class="pill-wait">Checking…</span>';
+  document.getElementById('h-db').innerHTML     = '<span class="pill-wait">Checking…</span>';
+  try {
+    const r = await fetch('http://localhost:8081/actuator/health');
+    const d = await r.json();
+    const ok = d.status === 'UP';
+    document.getElementById('h-spring').innerHTML = ok
+      ? '<span class="pill-up">✓ UP</span>' : '<span class="pill-down">✗ ' + d.status + '</span>';
+    document.getElementById('h-spring-d').textContent = 'Spring Boot 3.4.5 + Hibernate 6 + H2';
+    document.getElementById('h-db').innerHTML = ok
+      ? '<span class="pill-up">✓ UP</span>' : '<span class="pill-down">✗ DOWN</span>';
+    document.getElementById('h-db-d').textContent = 'H2 2.3.232 at E:/JavaUpgradeDemo/openmrs-h2/openmrs';
+    document.getElementById('last-refresh').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    document.getElementById('h-spring').innerHTML = '<span class="pill-down">✗ ERROR</span>';
+    document.getElementById('h-spring-d').textContent = e.message + ' — is port 8081 accessible?';
+    document.getElementById('h-db').innerHTML = '<span class="pill-down">✗ UNKNOWN</span>';
+  }
+}
+
+/* ── Quick status check (status page chips) ── */
+async function quickCheck(url, divId) {
+  const el = document.getElementById(divId);
+  el.style.display = 'block';
+  el.textContent = 'Fetching ' + url + ' …';
+  try {
+    const r = await fetch(url);
+    const txt = await r.text();
+    let preview = txt.length > 200 ? txt.substring(0,200) + '…' : txt;
+    el.textContent = '[' + r.status + '] ' + preview;
+    el.className = r.ok ? 'openmrs_msg' : 'openmrs_error';
+  } catch(e) {
+    el.textContent = 'ERROR: ' + e.message;
+    el.className = 'openmrs_error';
+  }
+}
+
+/* ── API Tester ── */
+function load(url) {
+  document.getElementById('t-url').value = url;
+  document.getElementById('t-method').value = 'GET';
+  sendReq();
+}
+function loadAuth(url) {
+  document.getElementById('t-url').value = url;
+  document.getElementById('t-method').value = 'GET';
+  if (!document.getElementById('t-auth').value) {
+    document.getElementById('t-auth').value = 'admin:Admin123';
+  }
+  sendReq();
+}
+async function sendReq() {
+  const method = document.getElementById('t-method').value;
+  const url    = document.getElementById('t-url').value.trim();
+  const auth   = document.getElementById('t-auth').value.trim();
+  const body   = document.getElementById('t-body').value.trim();
+
+  const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+  if (auth) headers['Authorization'] = 'Basic ' + btoa(auth);
+
+  document.getElementById('resp-body').textContent = 'Sending ' + method + ' ' + url + ' …';
+  document.getElementById('resp-status').textContent = '';
+
+  try {
+    const opts = { method, headers, mode: 'cors' };
+    if (body && (method === 'POST' || method === 'PUT')) opts.body = body;
+    const r = await fetch(url, opts);
+    const txt = await r.text();
+    const st = document.getElementById('resp-status');
+    st.textContent = r.status + ' ' + r.statusText;
+    st.className = 'resp-status ' + (r.ok ? 'resp-ok' : 'resp-err');
+    try {
+      document.getElementById('resp-body').textContent = JSON.stringify(JSON.parse(txt), null, 2);
+    } catch(e) {
+      document.getElementById('resp-body').textContent = txt || '(empty body)';
+    }
+  } catch(e) {
+    const st = document.getElementById('resp-status');
+    st.textContent = 'FETCH ERROR';
+    st.className = 'resp-status resp-err';
+    document.getElementById('resp-body').textContent =
+      e.message + '\n\nTip: cross-origin requests to port 8081 need CORS configured.\n' +
+      'Actuator CORS is enabled in application.properties — if you still see this,\n' +
+      'try the quick-test buttons which also trigger CORS preflight.';
+  }
+}
+function clearResp() {
+  document.getElementById('resp-body').textContent = '';
+  document.getElementById('resp-status').textContent = '';
+}
+
+/* ── Metrics ── */
+const KEY_METRICS = [
+  { k: 'jvm.memory.used',          lbl: 'JVM Memory Used',       unit: 'MB', div: 1048576 },
+  { k: 'jvm.memory.max',           lbl: 'JVM Memory Max',        unit: 'MB', div: 1048576 },
+  { k: 'jvm.threads.live',         lbl: 'Live Threads',          unit: '',   div: 1 },
+  { k: 'process.uptime',           lbl: 'Process Uptime',        unit: 's',  div: 1 },
+  { k: 'jvm.gc.pause',             lbl: 'GC Pause Total',        unit: 'ms', div: 1 },
+  { k: 'system.cpu.usage',         lbl: 'System CPU',            unit: '%',  div: 0.01 },
+  { k: 'hibernate.sessions.open',  lbl: 'Hibernate Sessions',    unit: '',   div: 1 },
+  { k: 'http.server.requests',     lbl: 'HTTP Requests (total)', unit: '',   div: 1 },
+];
+async function loadAllMetrics() {
+  const grid = document.getElementById('metric-grid');
+  grid.innerHTML = '<div class="openmrs_msg">Loading…</div>';
+  const boxes = [];
+  for (const m of KEY_METRICS) {
+    try {
+      const r = await fetch('http://localhost:8081/actuator/metrics/' + m.k);
+      if (r.ok) {
+        const d = await r.json();
+        const raw = d.measurements && d.measurements[0] ? d.measurements[0].value : null;
+        const val = raw !== null ? (raw / m.div).toFixed(raw / m.div < 10 ? 2 : 0) : '—';
+        boxes.push('<div class="metric-box"><div class="mval">' + val + (m.unit ? ' <small>' + m.unit + '</small>' : '') +
+          '</div><div class="mlbl">' + m.lbl + '</div></div>');
+      }
+    } catch(e) { /* skip */ }
+  }
+  grid.innerHTML = boxes.join('') || '<div class="openmrs_error">Could not reach actuator at port 8081. Check CORS or open http://localhost:8081/actuator/metrics directly.</div>';
+
+  // List all metric names
+  try {
+    const r = await fetch('http://localhost:8081/actuator/metrics');
+    const d = await r.json();
+    const names = (d.names || []).map(n => '<code style="margin:2px;display:inline-block;">' + n + '</code>').join(' ');
+    document.getElementById('all-metrics-list').innerHTML = names;
+  } catch(e) {
+    document.getElementById('all-metrics-list').textContent = 'Could not load metric names.';
+  }
+}
+
+// ── Business Services ──
+async function resetPass() {
+  document.getElementById('biz-resp').textContent = 'Changing admin password from "test" → "Admin123"…';
+  try {
+    const r = await fetch('/openmrs/test-api/change-admin-password?oldPassword=test&newPassword=Admin123', { method: 'POST' });
+    const d = await r.json();
+    document.getElementById('biz-status').textContent = d.ok ? '✓ Password set' : '✗ Failed';
+    document.getElementById('biz-status').style.color = d.ok ? 'green' : 'red';
+    document.getElementById('biz-resp').textContent = JSON.stringify(d, null, 2);
+    if (d.ok) {
+      document.querySelector('[onclick="resetPass()"]').textContent = '① Admin Password = Admin123 ✓';
+      document.querySelector('[onclick="resetPass()"]').style.background = '#2a9';
+    }
+  } catch(e) {
+    document.getElementById('biz-resp').textContent = 'Error: ' + e.message;
+  }
+}
+async function svc(url) {
+  document.getElementById('biz-resp').textContent = 'Calling ' + url + ' …';
+  document.getElementById('biz-status').textContent = '';
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    const st = document.getElementById('biz-status');
+    if (d.ok === false) {
+      st.textContent = '✗ ERROR'; st.style.color = 'red';
+    } else {
+      st.textContent = '✓ OK'; st.style.color = 'green';
+    }
+    document.getElementById('biz-resp').textContent = JSON.stringify(d, null, 2);
+  } catch(e) {
+    document.getElementById('biz-status').textContent = '✗ FETCH ERROR';
+    document.getElementById('biz-status').style.color = 'red';
+    document.getElementById('biz-resp').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function createPatient() {
+  const body = {
+    givenName:  document.getElementById('pt-first').value,
+    familyName: document.getElementById('pt-last').value,
+    gender:     document.getElementById('pt-gender').value
+  };
+  document.getElementById('biz-resp').textContent = 'Creating patient…';
+  try {
+    const r = await fetch('/openmrs/test-api/patient', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    document.getElementById('biz-status').textContent = d.ok ? '✓ Created' : '✗ Failed';
+    document.getElementById('biz-status').style.color = d.ok ? 'green' : 'red';
+    document.getElementById('biz-resp').textContent = JSON.stringify(d, null, 2);
+    if (d.ok && d.data && d.data.uuid) {
+      document.getElementById('pt-del-uuid').value = d.data.uuid;
+    }
+  } catch(e) {
+    document.getElementById('biz-resp').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function deletePatient() {
+  const uuid = document.getElementById('pt-del-uuid').value.trim();
+  if (!uuid) { alert('Enter a patient UUID first'); return; }
+  document.getElementById('biz-resp').textContent = 'Deleting patient ' + uuid + ' …';
+  try {
+    const r = await fetch('/openmrs/test-api/patient/' + uuid, { method: 'DELETE' });
+    const d = await r.json();
+    document.getElementById('biz-status').textContent = d.ok ? '✓ Deleted' : '✗ Failed';
+    document.getElementById('biz-status').style.color = d.ok ? 'green' : 'red';
+    document.getElementById('biz-resp').textContent = JSON.stringify(d, null, 2);
+  } catch(e) {
+    document.getElementById('biz-resp').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function searchConcepts() {
+  const q = document.getElementById('concept-q').value.trim();
+  if (!q) { alert('Enter a search term'); return; }
+  svc('/openmrs/test-api/concepts?search=' + encodeURIComponent(q) + '&limit=30');
+}
+
+// Auto-check health on load
+refreshHealth();
+setInterval(refreshHealth, 30000);
+</script>
+</body>
+</html>

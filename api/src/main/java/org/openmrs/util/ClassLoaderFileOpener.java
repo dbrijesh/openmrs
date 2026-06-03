@@ -12,10 +12,14 @@ package org.openmrs.util;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.SortedSet;
+import java.util.TreeSet;
 
 import liquibase.resource.AbstractResourceAccessor;
-import liquibase.resource.InputStreamList;
+import liquibase.resource.Resource;
+import liquibase.resource.URIResource;
 
 /**
  * Implementation of liquibase FileOpener interface so that the {@link OpenmrsClassLoader} will be
@@ -23,47 +27,56 @@ import liquibase.resource.InputStreamList;
  * liquibase xml files in modules to be found.
  */
 public class ClassLoaderFileOpener extends AbstractResourceAccessor {
-	
+
 	/**
 	 * The classloader to read from
 	 */
 	private final ClassLoader cl;
-	
+
 	/**
 	 * @param cl the {@link ClassLoader} to use for finding files.
 	 */
 	public ClassLoaderFileOpener(ClassLoader cl) {
 		this.cl = cl;
 	}
-	
+
 	@Override
-	public InputStreamList openStreams(String context, String path) throws IOException {
-		InputStreamList result = new InputStreamList();
-		
-		if (path.isEmpty()) {
+	public List<Resource> getAll(String path) throws IOException {
+		List<Resource> result = new ArrayList<>();
+
+		if (path == null || path.isEmpty()) {
 			return result;
 		}
-		
+
 		URL url = cl.getResource(path);
 		if (url != null) {
 			try {
-				result.add(url.toURI(), url.openStream());
+				result.add(new URIResource(path, url.toURI()));
 			}
 			catch (URISyntaxException e) {
 				throw new IOException(e);
 			}
 		}
-		
+
 		return result;
-	}
-	
-	@Override
-	public SortedSet<String> list(String s, String s1, boolean b, boolean b1, boolean b2) throws IOException {
-		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public SortedSet<String> describeLocations() {
-		return null;
+	public List<Resource> search(String path, boolean recursive) throws IOException {
+		return new ArrayList<>();
+	}
+
+	@Override
+	public SortedSet<String> list(String s, String s1, boolean b, boolean b1, boolean b2) throws IOException {
+		return new TreeSet<>();
+	}
+
+	@Override
+	public List<String> describeLocations() {
+		return new ArrayList<>();
+	}
+
+	@Override
+	public void close() throws Exception {
 	}
 }
